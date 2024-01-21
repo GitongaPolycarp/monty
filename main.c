@@ -1,44 +1,46 @@
 #include "monty.h"
 
-bus_t bus;
+global_t vglo;
 
 /**
- * free_bus - frees global variables
- * Return: no value
+ * free_vglo - frees the global variables
+ *
+ * Return: no return
  */
-
-void free_bus(void)
+void free_vglo(void)
 {
-	free_stack(bus.head);
-	free(bus.content);
-	fclose(bus.file);
+	free_dlistint(vglo.head);
+	free(vglo.buffer);
+	fclose(vglo.fd);
 }
 
 /**
- * start_bus - initialize global variables
- * @file: file descriptor
- * Return: no value
+ * start_vglo - initializes the global variables
+ *
+ * @fd: file descriptor
+ * Return: no return
  */
-
-void start_bus(FILE *file)
+void start_vglo(FILE *fd)
 {
-	bus.lifi = 1;
-	bus.cont = 1;
-	bus.arg = NULL;
-	bus.file = file;
-	bus.content = NULL;
+	vglo.lifo = 1;
+	vglo.cont = 1;
+	vglo.arg = NULL;
+	vglo.head = NULL;
+	vglo.fd = fd;
+	vglo.buffer = NULL;
 }
 
 /**
- * input_check - checks if file exists
- * @argc: number of arguments
- * @argv: arguments passed
+ * check_input - checks if the file exists and if the file can
+ * be opened
+ *
+ * @argc: argument count
+ * @argv: argument vector
  * Return: file struct
  */
-
-FILE *input_check(int argc, char *argv[])
+FILE *check_input(int argc, char *argv[])
 {
-	FILE file;
+	FILE *fd;
 
 	if (argc == 1 || argc > 2)
 	{
@@ -46,13 +48,56 @@ FILE *input_check(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	file = fopen(argv[1]. "r");
+	fd = fopen(argv[1], "r");
 
-	if (file == NULL)
+	if (fd == NULL)
 	{
 		dprintf(2, "Error: Can't open file %s\n", argv[1]);
 		exit(EXIT_FAILURE);
 	}
 
-	return (file);
+	return (fd);
+}
+
+/**
+ * main - Entry point
+ *
+ * @argc: argument count
+ * @argv: argument vector
+ * Return: 0 on success
+ */
+int main(int argc, char *argv[])
+{
+	void (*f)(stack_t **stack, unsigned int line_number);
+	FILE *fd;
+	size_t size = 256;
+	ssize_t nlines = 0;
+	char *lines[2] = {NULL, NULL};
+
+	fd = check_input(argc, argv);
+	start_vglo(fd);
+	nlines = getline(&vglo.buffer, &size, fd);
+	while (nlines != -1)
+	{
+		lines[0] = _strtoky(vglo.buffer, " \t\n");
+		if (lines[0] && lines[0][0] != '#')
+		{
+			f = get_opcodes(lines[0]);
+			if (!f)
+			{
+				dprintf(2, "L%u: ", vglo.cont);
+				dprintf(2, "unknown instruction %s\n", lines[0]);
+				free_vglo();
+				exit(EXIT_FAILURE);
+			}
+			vglo.arg = _strtoky(NULL, " \t\n");
+			f(&vglo.head, vglo.cont);
+		}
+		nlines = getline(&vglo.buffer, &size, fd);
+		vglo.cont++;
+	}
+
+	free_vglo();
+
+	return (0);
 }
