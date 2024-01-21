@@ -1,4 +1,3 @@
-#include "config.h"
 #include "polyfill.h"
 #include <unistd.h>
 #include <string.h>
